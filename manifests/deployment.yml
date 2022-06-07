@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "aaminiakstest-2e67"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "aaminiakstest-2e67"
+  template:
+    metadata:
+      labels:
+        app: "aaminiakstest-2e67"
+    spec:
+      containers:
+        - name: "aaminiakstest-2e67"
+          image: "khaksonlydndregistry.azurecr.io/aaminiakstest"
+          ports:
+          - containerPort: 80
