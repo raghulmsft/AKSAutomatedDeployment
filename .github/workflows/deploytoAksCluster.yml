@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: khaksonlydndregistry.azurecr.io
+        username: ${{ secrets.acr_khaksonlydndregistry_username }}
+        password: ${{ secrets.acr_khaksonlydndregistry_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/" -f  "Dockerfile" -t khaksonlydndregistry.azurecr.io/aaminiakstest:${{ github.sha }} --label dockerfile-path=Dockerfile
+        docker push khaksonlydndregistry.azurecr.io/aaminiakstest:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_aaminiakstest_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep aamini-aks-test8a61 | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace aamini-aks-test8a61`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: aamini-aks-test8a61
+        container-registry-url: khaksonlydndregistry.azurecr.io
+        container-registry-username: ${{ secrets.acr_khaksonlydndregistry_username }}
+        container-registry-password: ${{ secrets.acr_khaksonlydndregistry_password }}
+        secret-name: aaminiakstesdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: aamini-aks-test8a61
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+        images: |
+          khaksonlydndregistry.azurecr.io/aaminiakstest:${{ github.sha }}
+        imagepullsecrets: |
+          aaminiakstesdockerauth
